@@ -1,0 +1,9 @@
+# Archivos y carpetas locales cuyo nombre empieza por dos puntos
+..*
+
+# Dependencias y artefactos generados
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
