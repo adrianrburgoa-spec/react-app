@@ -1,7 +1,10 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+@import 'tailwindcss';
+
 :root {
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-  color: #e2e8f0;
-  background: #0f172a;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: #e1e2eb;
+  background: #101319;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
@@ -14,4 +17,11 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background: #101319;
 }
+
+button, input, select { font: inherit; }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #101319; }
+::-webkit-scrollbar-thumb { background: #32353c; border-radius: 999px; }

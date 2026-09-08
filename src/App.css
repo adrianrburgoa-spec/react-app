@@ -1,52 +1,24 @@
-.app-shell {
-  display: grid;
-  min-height: 100vh;
-  place-items: center;
-  padding: 24px;
-  background: radial-gradient(circle at top right, #164e63 0, transparent 42%), #0f172a;
-}
-
-.welcome-card {
-  width: min(100%, 640px);
-  padding: clamp(32px, 8vw, 72px);
-  border: 1px solid #334155;
-  border-radius: 16px;
-  background: rgba(15, 23, 42, 0.88);
-  box-shadow: 0 24px 80px rgba(2, 6, 23, 0.4);
-}
-
-.eyebrow {
-  margin: 0 0 16px;
-  color: #67e8f9;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-h1 {
-  max-width: 520px;
-  margin: 0;
-  color: #f8fafc;
-  font-size: clamp(2.2rem, 7vw, 4.8rem);
-  line-height: 0.98;
-}
-
-.intro {
-  max-width: 420px;
-  margin: 24px 0 32px;
-  color: #cbd5e1;
-  font-size: 1.08rem;
-  line-height: 1.6;
-}
-
-.status-badge {
-  display: inline-flex;
-  padding: 10px 14px;
-  border: 1px solid #155e75;
-  border-radius: 999px;
-  color: #a5f3fc;
-  background: #083344;
-  font-size: 0.9rem;
-  font-weight: 600;
-}
+.app-frame { min-height: 100vh; background: radial-gradient(circle at 80% 0%, #17252e 0, transparent 26rem), #101319; }
+.sidebar { width: 17.5rem; box-sizing: border-box; border-right: 1px solid #2e384d; background: #131722 !important; color: #e1e2eb; }
+.desktop-drawer .MuiDrawer-paper { width: 17.5rem; }
+.main-content { margin-left: 17.5rem; min-height: 100vh; padding: 2rem clamp(1rem, 3vw, 2.5rem); }
+.brand-block { display: flex; align-items: center; gap: .75rem; padding: 1.5rem 1.25rem 0; }
+.brand-mark { display: grid; place-items: center; width: 2.5rem; height: 2.5rem; border: 1px solid #ffc665; border-radius: .5rem; color: #ffc665; font-family: 'JetBrains Mono'; font-weight: 700; }
+.brand-name { color: #f8fafc; font-size: .9rem; letter-spacing: .16em; font-weight: 700; }
+.brand-meta, .mono-label, .eyebrow-text { font-family: 'JetBrains Mono', monospace; font-size: .66rem; letter-spacing: .08em; text-transform: uppercase; }
+.brand-meta { margin-top: .25rem; color: #64748b; }
+.nav-item { min-height: 46px !important; margin: 2px 0; border-radius: 8px !important; color: #94a3b8 !important; }
+.nav-item .MuiListItemIcon-root { min-width: 38px; color: #64748b; }
+.nav-item.Mui-selected, .nav-item.Mui-selected:hover { color: #ffc665 !important; background: #ffc66518 !important; border-left: 2px solid #ffc665; }
+.nav-item.Mui-selected .MuiListItemIcon-root { color: #ffc665; }
+.artist-card { display: flex; align-items: center; gap: .65rem; padding: .75rem; border: 1px solid #2e384d; border-radius: 10px; background: #1d2026; }
+.surface { padding: 1.25rem; border: 1px solid rgba(255,255,255,.07); border-radius: 12px; background: #191c22; box-shadow: 0 4px 20px rgba(0,0,0,.2); }
+.page-title { max-width: 740px; color: #f8fafc; font-size: clamp(1.8rem, 4vw, 2.5rem); font-weight: 700; line-height: 1.1; letter-spacing: -.04em; }
+.amber-text { color: #ffc665; }.live-dot { width: 6px; height: 6px; border-radius: 999px; background: #54ea7e; box-shadow: 0 0 0 4px #54ea7e20; }
+.metric-card { min-height: 130px; transition: background .2s, transform .2s; }.metric-card:hover { background: #1d2026; transform: translateY(-2px); }
+.metric-icon { font-size: 1.25rem !important; }.metric-icon.amber, .metric-detail.amber { color: #ffc665; }.metric-icon.cyan, .metric-detail.cyan { color: #4cd7f6; }.metric-icon.green, .metric-detail.green { color: #54ea7e; }.metric-detail.red, .metric-value.red { color: #ff7186; }
+.metric-value { display: block; color: #f8fafc; font-family: 'JetBrains Mono'; font-size: 1.55rem; line-height: 1; }.metric-value.amber { color: #ffc665; }.metric-value.cyan { color: #4cd7f6; }.metric-value.green { color: #54ea7e; }
+.panel-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; }.panel-heading h2, .surface h2 { margin-top: .35rem; color: #f8fafc; font-size: 1rem; font-weight: 700; }.eyebrow-text { color: #94a3b8; }.chart-area { display: flex; align-items: flex-end; gap: .65rem; height: 235px; padding: 1rem .5rem 0; background: linear-gradient(to top, #101319 1px, transparent 1px); background-size: 100% 25%; }.chart-bar-wrap { display: flex; height: 100%; flex: 1; flex-direction: column; align-items: center; justify-content: flex-end; gap: .65rem; }.chart-bar { width: 100%; max-width: 34px; border-radius: 5px 5px 2px 2px; background: #32353c; transition: background .2s; }.chart-bar:hover, .chart-bar.active { background: linear-gradient(#ffc665, #e5a93c); box-shadow: 0 0 18px #ffc66535; }.chart-bar-wrap span { font-family: 'JetBrains Mono'; font-size: .6rem; color: #64748b; }
+.appointment-list { display: flex; flex-direction: column; gap: .5rem; }.appointment-row, .client-row, .bank-row { display: flex; align-items: center; gap: 1rem; padding: .85rem; border-radius: 8px; background: #1d2026; }.appointment-row:hover, .client-row:hover, .bank-row:hover { background: #222836; }.appointment-time { width: 3.5rem; color: #ffc665; font-family: 'JetBrains Mono'; font-size: .8rem; }.appointment-client { display: flex; min-width: 0; flex: 1; align-items: center; gap: .75rem; }.appointment-client strong, .client-row strong, .bank-row strong { display: block; color: #e1e2eb; font-size: .85rem; }.appointment-client span, .bank-row span { display: block; margin-top: .2rem; color: #94a3b8; font-size: .72rem; }.client-row { padding: 1rem 1.25rem; border-radius: 0; background: transparent; }.client-row:first-child { background: #222836; }.mono-value { font-family: 'JetBrains Mono'; }.bank-row { margin-bottom: .55rem; }.bank-logo { display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border-radius: 6px; color: #ffc665; background: #32353c; font-size: .65rem; font-weight: 700; }.bank-row > div:nth-child(2) { flex: 1; }.schedule-card { display: flex; flex-direction: column; gap: .5rem; padding: 1rem; border-left: 3px solid #ffc665; border-radius: 6px; background: #222836; }.schedule-card.cyan { border-color: #4cd7f6; }.schedule-card.green { border-color: #54ea7e; }.schedule-card span:not(.MuiChip-label) { color: #94a3b8; font-size: .75rem; }.empty-slot { padding: .85rem; border: 1px dashed #475569; border-radius: 6px; color: #64748b; text-align: center; font-size: .75rem; }.mobile-topbar, .mobile-menu { display: none !important; }.toast { position: fixed; right: 2rem; bottom: 2rem; display: flex; align-items: center; gap: .5rem; padding: .75rem 1rem; border: 1px solid #54ea7e55; border-radius: 8px; color: #54ea7e; background: #1d2026; box-shadow: 0 10px 30px #0008; font-size: .85rem; }
+@media (max-width: 900px) { .desktop-drawer { display: none; }.main-content { margin-left: 0; padding-top: 1rem; }.mobile-topbar { display: flex !important; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }.mobile-menu { display: inline-flex !important; } }
+@media (max-width: 640px) { .main-content { padding: 1rem; }.surface { padding: 1rem; }.appointment-row { align-items: flex-start; flex-wrap: wrap; }.appointment-row .MuiChip-root { margin-left: 4.25rem; }.chart-area { gap: .3rem; }.chart-bar-wrap span { font-size: .48rem; }.page-title { font-size: 1.8rem; }.toast { right: 1rem; bottom: 1rem; left: 1rem; } }
