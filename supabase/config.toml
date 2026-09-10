@@ -4,12 +4,12 @@
 enabled = true
 site_url = "https://adrianrburgoa-spec.github.io/react-app/"
 additional_redirect_urls = ["http://127.0.0.1:5173/react-app/", "http://localhost:5173/react-app/", "http://127.0.0.1:4179/react-app/", "https://adrianrburgoa-spec.github.io/react-app/"]
-enable_signup = true
+enable_signup = false
 enable_anonymous_sign_ins = false
 minimum_password_length = 8
 
 [auth.email]
-enable_signup = true
+enable_signup = false
 enable_confirmations = true
 
 [functions.studio-staff]
