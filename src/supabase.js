@@ -6,6 +6,7 @@ export const supabase = url && key ? createClient(url, key) : null
 
 export const defaultSettings = { name: 'Administrador', studio: 'InkStudio CBBA', address: 'Cochabamba, Bolivia' }
 const fields = {
+  artists: ['name', 'active'],
   clients: ['name', 'phone', 'email', 'ci', 'tag', 'artist'],
   appointments: ['date', 'time', 'artist', 'type', 'status', 'notes'],
   payments: ['amount', 'method', 'date', 'concept'],

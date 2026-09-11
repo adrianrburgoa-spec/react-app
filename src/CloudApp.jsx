@@ -34,6 +34,7 @@ function WorkspaceData({ session, scope, studios, onSelect, onReload }) {
   const [initial, setInitial] = useState(null)
   const [error, setError] = useState('')
   const [attempt, setAttempt] = useState(0)
+  const reloadWorkspace = () => { setInitial(null); setAttempt(value => value + 1) }
   useEffect(() => {
     let current = true
     fetchStudio(scope.owner_id).then(data => { if (current) setInitial(data) }).catch(cause => { if (current) setError(databaseError(cause)) })
@@ -44,7 +45,7 @@ function WorkspaceData({ session, scope, studios, onSelect, onReload }) {
     if (error) throw error
   }
   if (!initial) return <main className="access-page"><section className="surface access-card">{error ? <><Alert severity="error">{error}</Alert><Button onClick={() => { setError(''); setAttempt(value => value + 1) }}>Reintentar</Button><Button onClick={() => signOut().catch(() => setError('No se pudo cerrar la sesión. Vuelve a intentarlo.'))}>Cerrar sesión</Button></> : <><CircularProgress /><p className="mt-4">Cargando datos del estudio…</p></>}</section></main>
-  return <App initial={initial} cloud scope={scope} toolbar={<StudioAccess session={session} scope={scope} studios={studios} onSelect={onSelect} onReload={onReload} />} onPersist={(previous, next) => persistStudioChange(previous, next, scope.owner_id)} onCreateClientAppointment={(client, appointment) => createClientAppointment(client, appointment, scope.owner_id)} onRefresh={() => fetchStudio(scope.owner_id)} onSignOut={signOut} />
+  return <App initial={initial} cloud scope={scope} toolbar={<StudioAccess session={session} scope={scope} studios={studios} onSelect={onSelect} onReload={onReload} onArtistsChanged={reloadWorkspace} />} onPersist={(previous, next) => persistStudioChange(previous, next, scope.owner_id)} onCreateClientAppointment={(client, appointment) => createClientAppointment(client, appointment, scope.owner_id)} onRefresh={() => fetchStudio(scope.owner_id)} onSignOut={signOut} />
 }
 
 function Workspace({ session }) {

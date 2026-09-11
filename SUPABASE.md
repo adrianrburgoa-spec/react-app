@@ -32,6 +32,11 @@ elegir el **Estudio activo**.
 La sesión que ya estaba abierta pierde el permiso para realizar nuevas consultas
 y escrituras; la información ya descargada puede seguir visible hasta actualizar.
 
+El administrador gestiona el **Catálogo de tatuadores** desde la misma ventana.
+Puede agregar nombres, renombrarlos o desactivarlos. Renombrar actualiza en cascada
+clientes, citas, invitaciones y cuentas relacionadas; desactivar solo impide nuevas
+asignaciones y conserva el historial existente.
+
 ## Notificaciones internas
 
 La campana muestra las citas pendientes. El personal contacta al cliente por

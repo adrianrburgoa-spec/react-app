@@ -12,10 +12,14 @@ Deno.serve(async request => {
   if (authError || !user) return reply({ error: 'Sesión inválida.' }, 401)
   try {
     const { ownerId, username, role, artist } = await request.json()
-    if (typeof ownerId !== 'string' || !/^[0-9a-f-]{36}$/i.test(ownerId) || typeof username !== 'string' || !/^[a-z0-9-]{3,30}$/.test(username) || !['admin','artist'].includes(role) || (role === 'artist' && !['Diego Arnez','Lucas Méndez','Sofía Rojas'].includes(artist))) return reply({ error: 'Datos de cuenta inválidos.' }, 400)
+    if (typeof ownerId !== 'string' || !/^[0-9a-f-]{36}$/i.test(ownerId) || typeof username !== 'string' || !/^[a-z0-9-]{3,30}$/.test(username) || !['admin','artist'].includes(role) || (role === 'artist' && typeof artist !== 'string')) return reply({ error: 'Datos de cuenta inválidos.' }, 400)
     const caller = createClient(url, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: `Bearer ${token}` } }, auth: { persistSession: false } })
     const permission = await caller.rpc('studio_role', { studio_id: ownerId })
     if (permission.error || permission.data !== 'admin') return reply({ error: 'Solo un administrador puede crear cuentas del equipo.' }, 403)
+    if (role === 'artist') {
+      const assigned = await admin.from('artists').select('id').eq('owner_id', ownerId).eq('name', artist).eq('active', true).maybeSingle()
+      if (assigned.error || !assigned.data) return reply({ error: 'El tatuador no existe o está inactivo.' }, 400)
+    }
     const email = `${username}.${ownerId.slice(0,8)}@inkstudio.example`
     const password = `Ink!${Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2,'0')).join('')}a9`
     const created = await admin.auth.admin.createUser({ email, password, email_confirm: true })
