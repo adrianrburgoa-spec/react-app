@@ -2,7 +2,7 @@
 import { Alert, Button, CircularProgress, TextField } from '@mui/material'
 import App from './App.jsx'
 import StudioAccess from './StudioAccess.jsx'
-import { databaseError, fetchStudio, persistStudioChange, supabase } from './supabase.js'
+import { createClientAppointment, databaseError, fetchStudio, persistStudioChange, supabase } from './supabase.js'
 
 function AccessForm({ recovery = false, onRecovered }) {
   const [mode, setMode] = useState('login')
@@ -44,7 +44,7 @@ function WorkspaceData({ session, scope, studios, onSelect, onReload }) {
     if (error) throw error
   }
   if (!initial) return <main className="access-page"><section className="surface access-card">{error ? <><Alert severity="error">{error}</Alert><Button onClick={() => { setError(''); setAttempt(value => value + 1) }}>Reintentar</Button><Button onClick={() => signOut().catch(() => setError('No se pudo cerrar la sesión. Vuelve a intentarlo.'))}>Cerrar sesión</Button></> : <><CircularProgress /><p className="mt-4">Cargando datos del estudio…</p></>}</section></main>
-  return <App initial={initial} cloud scope={scope} toolbar={<StudioAccess session={session} scope={scope} studios={studios} onSelect={onSelect} onReload={onReload} />} onPersist={(previous, next) => persistStudioChange(previous, next, scope.owner_id)} onRefresh={() => fetchStudio(scope.owner_id)} onSignOut={signOut} />
+  return <App initial={initial} cloud scope={scope} toolbar={<StudioAccess session={session} scope={scope} studios={studios} onSelect={onSelect} onReload={onReload} />} onPersist={(previous, next) => persistStudioChange(previous, next, scope.owner_id)} onCreateClientAppointment={(client, appointment) => createClientAppointment(client, appointment, scope.owner_id)} onRefresh={() => fetchStudio(scope.owner_id)} onSignOut={signOut} />
 }
 
 function Workspace({ session }) {

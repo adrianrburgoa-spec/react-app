@@ -87,3 +87,26 @@ export async function persistStudioChange(previous, next, ownerId) {
   }
   return next
 }
+
+export async function createClientAppointment(client, appointment, ownerId) {
+  const { data, error } = await supabase.rpc('create_client_appointment', {
+    studio_id: ownerId,
+    new_client_name: client.name,
+    new_client_phone: client.phone,
+    new_client_email: client.email,
+    new_client_ci: client.ci,
+    new_client_tag: client.tag,
+    new_client_artist: client.artist,
+    new_appointment_date: appointment.date,
+    new_appointment_time: appointment.time,
+    new_appointment_artist: appointment.artist,
+    new_appointment_type: appointment.type,
+    new_appointment_status: appointment.status,
+    new_appointment_notes: appointment.notes,
+  })
+  if (error) throw error
+  return {
+    client: fromRow('clients', data.client),
+    appointment: fromRow('appointments', data.appointment),
+  }
+}

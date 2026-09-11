@@ -14,6 +14,7 @@ const navItems = [
 const artists = ['Diego Arnez', 'Lucas Méndez', 'Sofía Rojas']
 const styles = ['Blackwork custom', 'Fine line / minimal', 'Realismo & sombras', 'Cover-up / restauro']
 const statuses = ['Pendiente', 'Confirmada', 'En proceso', 'Completada', 'Cancelada']
+const emptyClient = () => ({ name: '', phone: '', email: '', ci: '', tag: 'Nueva', artist: artists[0] })
 const dateKey = (date = new Date()) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 const money = value => `Bs. ${Number(value).toLocaleString('es-BO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const prettyDate = value => new Date(`${value}T12:00:00`).toLocaleDateString('es-BO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
@@ -37,7 +38,7 @@ function StatusChip({ label }) {
 function Field({ label, name, value, onChange, options, ...props }) {
   return <TextField fullWidth label={label} name={name} value={value ?? ''} onChange={event => onChange(name, event.target.value)} select={Boolean(options)} slotProps={{ inputLabel: { shrink: true } }} {...props}>{options?.map(option => <MenuItem key={option.value ?? option} value={option.value ?? option}>{option.label ?? option}</MenuItem>)}</TextField>
 }
-function App({ initial, cloud = false, onPersist, onRefresh, onSignOut, scope, toolbar }) {
+function App({ initial, cloud = false, onPersist, onCreateClientAppointment, onRefresh, onSignOut, scope, toolbar }) {
   const isAdmin = !scope || scope.role === 'admin'
   const [data, setData] = useState(() => initial || loadData())
   const [saving, setSaving] = useState(false)
@@ -50,6 +51,8 @@ function App({ initial, cloud = false, onPersist, onRefresh, onSignOut, scope, t
   const [period, setPeriod] = useState('Meses')
   const [dialog, setDialog] = useState(null)
   const [form, setForm] = useState({})
+  const [newClient, setNewClient] = useState(emptyClient)
+  const [useNewClient, setUseNewClient] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -79,9 +82,12 @@ function App({ initial, cloud = false, onPersist, onRefresh, onSignOut, scope, t
   const open = (kind, record) => {
     if (!isAdmin && (kind === 'payment' || kind === 'settings' || (kind === 'appointment' && !record))) return;
     setError(''); setConfirmDelete(false); setDialog(kind)
+    setUseNewClient(kind === 'appointment' && !record && !data.clients.length)
+    setNewClient(emptyClient())
     setForm(record ? { ...record } : kind === 'appointment' ? { clientId: data.clients[0]?.id || '', date: active === 'agenda' ? date : today, time: '10:00', artist: artists[0], type: styles[0], status: 'Pendiente', notes: '' } : kind === 'client' ? { name: '', phone: '', email: '', ci: '', tag: 'Nueva', artist: artists[0] } : kind === 'payment' ? { clientId: data.clients[0]?.id || '', amount: '', method: 'Efectivo', date: today, concept: '' } : kind === 'settings' ? { ...data.settings } : {})
   }
   const change = (name, value) => setForm(previous => ({ ...previous, [name]: value }))
+  const changeNewClient = (name, value) => setNewClient(previous => ({ ...previous, [name]: value }))
   const submit = async event => {
     event.preventDefault()
     if (busyRef.current) return
@@ -94,7 +100,10 @@ function App({ initial, cloud = false, onPersist, onRefresh, onSignOut, scope, t
     }
     if (dialog === 'client' && !record.name) return setError('Escribe el nombre del cliente.')
     if (dialog === 'client' && record.ci && data.clients.some(client => client.id !== record.id && client.ci === record.ci)) return setError('Ya existe un cliente con ese CI.')
-    if (['appointment', 'payment'].includes(dialog) && !data.clients.some(client => client.id === record.clientId)) return setError('Selecciona un cliente válido.')
+    const creatingClientWithAppointment = dialog === 'appointment' && !record.id && useNewClient
+    if (creatingClientWithAppointment && !newClient.name.trim()) return setError('Escribe el nombre del cliente nuevo.')
+    if (creatingClientWithAppointment && newClient.ci.trim() && data.clients.some(client => client.ci === newClient.ci.trim())) return setError('Ya existe un cliente con ese CI. Selecciónalo como cliente registrado.')
+    if (['appointment', 'payment'].includes(dialog) && !creatingClientWithAppointment && !data.clients.some(client => client.id === record.clientId)) return setError('Selecciona un cliente válido.')
     if (dialog === 'appointment') {
       if (!record.date || !record.time) return setError('Indica la fecha y la hora.')
       if (record.status !== 'Cancelada' && data.appointments.some(item => item.id !== record.id && item.date === record.date && item.time === record.time && item.artist === record.artist && item.status !== 'Cancelada')) return setError('El artista ya tiene una cita a esa hora. Elige otro horario.')
@@ -102,6 +111,23 @@ function App({ initial, cloud = false, onPersist, onRefresh, onSignOut, scope, t
     if (dialog === 'payment') {
       record.amount = Number(record.amount)
       if (!Number.isFinite(record.amount) || record.amount <= 0 || !record.date || !record.concept) return setError('Indica un importe mayor que cero, fecha y concepto.')
+    }
+    if (creatingClientWithAppointment) {
+      const client = Object.fromEntries(Object.entries(newClient).map(([key, value]) => [key, typeof value === 'string' ? value.trim() : value]))
+      if (cloud) {
+        busyRef.current = true; setSaving(true)
+        let saved
+        try {
+          saved = await onCreateClientAppointment(client, record)
+          setData(previous => ({ ...previous, clients: [...previous.clients, saved.client], appointments: [...previous.appointments, saved.appointment] }))
+        } catch (cause) { setError(databaseError(cause)) }
+        finally { busyRef.current = false; setSaving(false) }
+        if (saved) { close(); setNotice('Cliente y cita registrados correctamente') }
+        return
+      }
+      client.id = crypto.randomUUID(); record.id = crypto.randomUUID(); record.clientId = client.id
+      if (await saveData({ ...data, clients: [...data.clients, client], appointments: [...data.appointments, record] })) { close(); setNotice('Cliente y cita registrados correctamente') }
+      return
     }
     const key = { client: 'clients', appointment: 'appointments', payment: 'payments' }[dialog]
     record.id ||= crypto.randomUUID()
@@ -164,12 +190,13 @@ function App({ initial, cloud = false, onPersist, onRefresh, onSignOut, scope, t
   </main>
   <Dialog open={Boolean(dialog)} onClose={close} fullWidth maxWidth="sm"><DialogTitle>{dialog === 'notifications' ? 'Notificaciones del estudio' : dialog === 'settings' ? 'Configuración del estudio' : `${form.id ? 'Editar' : 'Registrar'} ${dialog === 'client' ? 'cliente' : dialog === 'payment' ? 'pago' : 'cita'}`}</DialogTitle>{dialog === 'notifications' ? <><DialogContent><AppointmentNotifications appointments={data.appointments} clients={data.clients} scope={scope} saving={saving} error={error} onRefresh={cloud ? refresh : undefined} onConfirm={async item => { const next = { ...data, appointments: data.appointments.map(row => row.id === item.id ? { ...row, status: 'Confirmada' } : row) }; if (await saveData(next)) setNotice('Cita confirmada'); }} /></DialogContent><DialogActions><Button onClick={close}>Cerrar</Button></DialogActions></> : <form onSubmit={submit}><fieldset disabled={saving} style={{ border: 0, margin: 0, padding: 0 }}><DialogContent><div className="form-fields">{error && <Alert severity="error">{error}</Alert>}
     {dialog === 'client' && <fieldset disabled={!isAdmin} className="form-fields" style={{ border: 0, padding: 0 }}><Field label="Nombre completo" name="name" value={form.name} onChange={change} required inputProps={{ maxLength: 120 }} /><Field label="Teléfono" name="phone" type="tel" value={form.phone} onChange={change} /><Field label="Correo electrónico" name="email" type="email" value={form.email} onChange={change} /><Field label="CI" name="ci" value={form.ci} onChange={change} /><Field label="Categoría" name="tag" value={form.tag} onChange={change} options={['Nueva', 'Activo', 'VIP']} /><Field label="Artista preferido" name="artist" value={form.artist} onChange={change} options={artists} /></fieldset>}
-    {['appointment', 'payment'].includes(dialog) && <>{dialog === 'appointment' && data.clients.length > 0 && <Alert severity="info">Para registrar una cita debes seleccionar un cliente que ya esté registrado. Si no aparece en la lista, cierra este formulario y créalo primero en «Clientes CRM».</Alert>}{!data.clients.length && <Alert severity="warning">No hay clientes registrados. Primero crea uno en «Clientes CRM» y después registra la cita.<Button onClick={() => open('client')}>Registrar cliente</Button></Alert>}<Field disabled={!isAdmin} label={dialog === 'appointment' ? 'Cliente registrado' : 'Cliente'} name="clientId" value={form.clientId} onChange={change} options={data.clients.map(client => ({ value: client.id, label: client.name }))} required /><Field disabled={!isAdmin} label="Fecha" name="date" type="date" value={form.date} onChange={change} required /></>}
+    {dialog === 'appointment' && <>{!form.id && isAdmin && <div className="flex flex-wrap gap-2"><Button variant={!useNewClient ? 'contained' : 'outlined'} onClick={() => setUseNewClient(false)} disabled={!data.clients.length}>Cliente registrado</Button><Button variant={useNewClient ? 'contained' : 'outlined'} onClick={() => setUseNewClient(true)}>Cliente nuevo</Button></div>}{useNewClient && !form.id ? <><Alert severity="info">El cliente y la cita se guardarán juntos en Supabase. Si ocurre un error, no se registrará ninguno de los dos.</Alert><Field label="Nombre completo del cliente" name="name" value={newClient.name} onChange={changeNewClient} required inputProps={{ maxLength: 120 }} /><Field label="Teléfono" name="phone" type="tel" value={newClient.phone} onChange={changeNewClient} /><Field label="Correo electrónico" name="email" type="email" value={newClient.email} onChange={changeNewClient} /><Field label="CI" name="ci" value={newClient.ci} onChange={changeNewClient} /><Field label="Categoría" name="tag" value={newClient.tag} onChange={changeNewClient} options={['Nueva', 'Activo', 'VIP']} /><Field label="Artista preferido" name="artist" value={newClient.artist} onChange={changeNewClient} options={artists} /></> : <><Alert severity="info">Selecciona un cliente que ya esté registrado. Si no aparece, usa la opción «Cliente nuevo».</Alert><Field disabled={!isAdmin} label="Cliente registrado" name="clientId" value={form.clientId} onChange={change} options={data.clients.map(client => ({ value: client.id, label: client.name }))} required /></>}<Field disabled={!isAdmin} label="Fecha" name="date" type="date" value={form.date} onChange={change} required /></>}
+    {dialog === 'payment' && <>{!data.clients.length && <Alert severity="warning">No hay clientes registrados. Registra un cliente antes de añadir un pago.</Alert>}<Field label="Cliente" name="clientId" value={form.clientId} onChange={change} options={data.clients.map(client => ({ value: client.id, label: client.name }))} required /><Field label="Fecha" name="date" type="date" value={form.date} onChange={change} required /></>}
     {dialog === 'appointment' && <><Field disabled={!isAdmin} label="Hora" name="time" type="time" value={form.time} onChange={change} required /><Field disabled={!isAdmin} label="Artista" name="artist" value={form.artist} onChange={change} options={artists} /><Field disabled={!isAdmin} label="Estilo" name="type" value={form.type} onChange={change} options={styles} /><Field disabled={!isAdmin && form.artist !== scope.artist} label="Estado" name="status" value={form.status} onChange={change} options={statuses} /><Field disabled={!isAdmin && form.artist !== scope.artist} label="Notas" name="notes" value={form.notes} onChange={change} multiline minRows={2} /></>}
     {dialog === 'payment' && <><Field label="Importe (Bs.)" name="amount" type="number" value={form.amount} onChange={change} required slotProps={{ htmlInput: { min: '0.01', step: '0.01' } }} /><Field label="Método de pago" name="method" value={form.method} onChange={change} options={['Efectivo', 'QR', 'Transferencia']} /><Field label="Concepto" name="concept" value={form.concept} onChange={change} required /><Alert severity="info">Este registro lleva el control de caja; no realiza cobros ni transferencias bancarias.</Alert></>}
     {dialog === 'settings' && <><Field label="Nombre del administrador" name="name" value={form.name} onChange={change} required /><Field label="Nombre del estudio" name="studio" value={form.studio} onChange={change} required /><Field label="Dirección" name="address" value={form.address} onChange={change} required /></>}
     {confirmDelete && <Alert severity="warning">¿Eliminar este registro de forma definitiva?<div><Button color="error" onClick={remove}>Confirmar eliminación</Button><Button onClick={() => setConfirmDelete(false)}>Conservar</Button></div></Alert>}
-  </div></DialogContent><DialogActions sx={{ flexWrap: 'wrap', gap: 1 }}>{isAdmin && form.id && <Button color="error" onClick={() => setConfirmDelete(true)}>Eliminar</Button>}<Button onClick={close}>Cancelar</Button>{(isAdmin || (dialog === 'appointment' && form.artist === scope.artist)) && <Button variant="contained" type="submit" disabled={['appointment', 'payment'].includes(dialog) && !data.clients.length}>{saving ? 'Guardando…' : 'Guardar'}</Button>}</DialogActions></fieldset></form>}</Dialog>
+  </div></DialogContent><DialogActions sx={{ flexWrap: 'wrap', gap: 1 }}>{isAdmin && form.id && <Button color="error" onClick={() => setConfirmDelete(true)}>Eliminar</Button>}<Button onClick={close}>Cancelar</Button>{(isAdmin || (dialog === 'appointment' && form.artist === scope.artist)) && <Button variant="contained" type="submit" disabled={(dialog === 'payment' && !data.clients.length) || (dialog === 'appointment' && !form.id && !useNewClient && !data.clients.length)}>{saving ? 'Guardando…' : useNewClient && dialog === 'appointment' && !form.id ? 'Guardar cliente y cita' : 'Guardar'}</Button>}</DialogActions></fieldset></form>}</Dialog>
   <Snackbar open={Boolean(notice)} autoHideDuration={4500} onClose={() => setNotice('')} message={notice} action={<Button onClick={() => setNotice('')}>Cerrar</Button>} />
   </div>
 }

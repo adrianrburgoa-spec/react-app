@@ -59,6 +59,11 @@ Los registros se guardan en Supabase. **Actualizar datos** trae los cambios de
 otra sesión. Si dos sesiones editan el mismo registro, el control de versión
 rechaza la segunda edición para evitar sobrescribir cambios sin avisar.
 
+Al registrar una cita se puede elegir un cliente existente o completar un
+cliente nuevo en el mismo formulario. En el segundo caso, la función
+`create_client_appointment` guarda ambos registros dentro de una sola
+transacción: si falla la cita, tampoco se crea el cliente.
+
 ## Credenciales locales
 
 - `.env.local`: URL y clave pública para Vite.
