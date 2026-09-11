@@ -69,6 +69,12 @@ cliente nuevo en el mismo formulario. En el segundo caso, la función
 `create_client_appointment` guarda ambos registros dentro de una sola
 transacción: si falla la cita, tampoco se crea el cliente.
 
+Cada cita admite un precio total. Los anticipos y demás abonos se registran en
+**Pagos y caja** y pueden vincularse a una cita concreta; la aplicación calcula
+automáticamente lo pagado y el saldo pendiente. Los pagos generales sin cita
+siguen disponibles. La base valida que la cita y el pago pertenezcan al mismo
+cliente y estudio.
+
 ## Credenciales locales
 
 - `.env.local`: URL y clave pública para Vite.

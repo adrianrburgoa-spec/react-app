@@ -8,7 +8,7 @@ export const defaultSettings = { name: 'Administrador', studio: 'InkStudio CBBA'
 const fields = {
   artists: ['name', 'active'],
   clients: ['name', 'phone', 'email', 'ci', 'tag', 'artist'],
-  appointments: ['date', 'time', 'artist', 'type', 'status', 'notes'],
+  appointments: ['date', 'time', 'artist', 'type', 'status', 'notes', 'total_price'],
   payments: ['amount', 'method', 'date', 'concept'],
   studio_settings: ['name', 'studio', 'address'],
 }
@@ -16,8 +16,10 @@ function fromRow(table, row) {
   const record = Object.fromEntries(fields[table].map(key => [key, row[key]]))
   if (table !== 'studio_settings') record.id = row.id
   if (table === 'appointments') record.time = row.time.slice(0, 5)
+  if (table === 'appointments') record.total_price = Number(row.total_price)
   if (table === 'payments') record.amount = Number(row.amount)
   if (row.client_id) record.clientId = row.client_id
+  if (row.appointment_id) record.appointmentId = row.appointment_id
   record._updatedAt = row.updated_at
   return record
 }
@@ -26,6 +28,7 @@ function toRow(table, record, ownerId) {
   row.owner_id = ownerId
   if (table !== 'studio_settings') row.id = record.id
   if (record.clientId) row.client_id = record.clientId
+  if (table === 'payments') row.appointment_id = record.appointmentId || null
   return row
 }
 export function databaseError(error) {
@@ -104,6 +107,7 @@ export async function createClientAppointment(client, appointment, ownerId) {
     new_appointment_type: appointment.type,
     new_appointment_status: appointment.status,
     new_appointment_notes: appointment.notes,
+    new_appointment_total_price: appointment.total_price,
   })
   if (error) throw error
   return {
