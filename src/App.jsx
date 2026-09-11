@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { databaseError } from './supabase.js'
 import AppointmentNotifications from './AppointmentNotifications.jsx'
-import { AddCircle, Analytics, CalendarMonth, ChevronRight, Dashboard as DashboardIcon, Download, EventAvailable, Groups, Menu, NotificationsNone, Payments as PaymentsIcon, Search, Settings, Verified, Wallet } from '@mui/icons-material'
+import { AccessTime, AddCircle, Analytics, CalendarMonth, ChevronRight, Close, Dashboard as DashboardIcon, Download, Edit, EventAvailable, Groups, Menu, NotificationsNone, PaletteOutlined, Payments as PaymentsIcon, Person, Search, Settings, StickyNote2Outlined, Verified, Wallet, WhatsApp } from '@mui/icons-material'
 import { Alert, Avatar, Badge, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Drawer, IconButton, InputAdornment, List, ListItemButton, ListItemIcon, ListItemText, MenuItem, Snackbar, TextField, Tooltip } from '@mui/material'
 import './App.css'
 
@@ -53,6 +53,8 @@ function App({ initial, cloud = false, onPersist, onCreateClientAppointment, onR
   const [filter, setFilter] = useState('Todos')
   const [period, setPeriod] = useState('Meses')
   const [dialog, setDialog] = useState(null)
+  const [viewingAppointment, setViewingAppointment] = useState(null)
+  const [appointmentDetailTab, setAppointmentDetailTab] = useState('schedule')
   const [form, setForm] = useState({})
   const [newClient, setNewClient] = useState(emptyClient)
   const [useNewClient, setUseNewClient] = useState(false)
@@ -74,7 +76,7 @@ function App({ initial, cloud = false, onPersist, onCreateClientAppointment, onR
       return false
     } finally { busyRef.current = false; setSaving(false) }
   }
-  const close = () => { if (busyRef.current) return; setDialog(null); setError(''); setConfirmDelete(false) }
+  const close = () => { if (busyRef.current) return; setDialog(null); setViewingAppointment(null); setError(''); setConfirmDelete(false) }
   const refresh = async () => {
     if (busyRef.current) return
     busyRef.current = true; setSaving(true)
@@ -84,7 +86,8 @@ function App({ initial, cloud = false, onPersist, onCreateClientAppointment, onR
   }
   const open = (kind, record) => {
     if (!isAdmin && (kind === 'payment' || kind === 'settings' || (kind === 'appointment' && !record))) return;
-    setError(''); setConfirmDelete(false); setDialog(kind === 'appointment' && record?.id ? 'appointment-details' : kind)
+    const showDetails = kind === 'appointment' && Boolean(record?.id)
+    setError(''); setConfirmDelete(false); setViewingAppointment(showDetails ? record : null); setAppointmentDetailTab('schedule'); setDialog(showDetails ? null : kind)
     setUseNewClient(kind === 'appointment' && !record && !data.clients.length)
     setNewClient(emptyClient(activeArtists[0]))
     setForm(record ? { ...record } : kind === 'appointment' ? { clientId: data.clients[0]?.id || '', date: active === 'agenda' ? date : today, time: '10:00', artist: activeArtists[0] || '', type: styles[0], status: 'Pendiente', notes: '', total_price: '' } : kind === 'client' ? emptyClient(activeArtists[0]) : kind === 'payment' ? { clientId: data.clients[0]?.id || '', appointmentId: '', amount: '', method: 'Efectivo', date: today, concept: '' } : kind === 'settings' ? { ...data.settings } : {})
@@ -151,7 +154,7 @@ function App({ initial, cloud = false, onPersist, onCreateClientAppointment, onR
   const saveAppointmentNote = async () => {
     if (!isAdmin && form.artist !== scope?.artist) return setError('No tienes permiso para modificar las notas de esta cita.')
     const next = { ...data, appointments: data.appointments.map(item => item.id === form.id ? { ...item, notes: (form.notes || '').trim() } : item) }
-    if (await saveData(next)) { close(); setNotice('Nota de la cita actualizada') }
+    if (await saveData(next)) setNotice('Nota de la cita actualizada')
   }
   const shiftDay = amount => { const next = new Date(`${date}T12:00:00`); next.setDate(next.getDate() + amount); setDate(dateKey(next)) }
   const appointmentsOn = day => data.appointments.filter(item => item.date === day).sort((a, b) => a.time.localeCompare(b.time))
@@ -163,6 +166,14 @@ function App({ initial, cloud = false, onPersist, onCreateClientAppointment, onR
   const appointmentPaid = id => sum(data.payments.filter(payment => payment.appointmentId === id))
   const appointmentBalance = appointment => Math.max(0, Number(appointment.total_price || 0) - appointmentPaid(appointment.id))
   const appointmentFinancialLabel = appointment => Number(appointment.total_price || 0) > 0 ? `Pagado ${money(appointmentPaid(appointment.id))} · Saldo ${money(appointmentBalance(appointment))}` : 'Precio sin definir'
+  const detailClient = data.clients.find(client => client.id === form.clientId)
+  const detailPayments = data.payments.filter(payment => payment.appointmentId === form.id).sort((a, b) => b.date.localeCompare(a.date))
+  const appointmentCode = form.id ? `#CT-${String(form.id).replaceAll('-', '').slice(0, 6).toUpperCase()}` : '#CT'
+  const clientInitials = (detailClient?.name || 'Cliente').split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase()
+  const rawPhone = (detailClient?.phone || '').replace(/\D/g, '')
+  const whatsappPhone = rawPhone.length === 8 ? `591${rawPhone}` : rawPhone
+  const isTodayAppointment = form.date === today
+  const appointmentTiming = isTodayAppointment ? 'Cita hoy' : form.date > today ? 'Próxima cita' : 'Cita anterior'
   const outstandingBalance = data.appointments.filter(item => item.status !== 'Cancelada').reduce((total, item) => total + appointmentBalance(item), 0)
   const monthPayments = data.payments.filter(item => item.date.startsWith(today.slice(0, 7)))
   const dailyPayments = data.payments.filter(item => item.date === today)
@@ -204,6 +215,65 @@ function App({ initial, cloud = false, onPersist, onCreateClientAppointment, onR
     {active === 'pagos' && <Surface className="mt-4"><div className="panel-heading"><div><span className="eyebrow-text">MOVIMIENTOS · {data.payments.length}</span><h2>Historial de pagos</h2></div></div>{!data.payments.length && <p className="empty-slot">Aún no hay pagos. Usa «Registrar pago» para añadir el primero.</p>}{[...data.payments].sort((a, b) => b.date.localeCompare(a.date)).map(payment => { const related = data.appointments.find(item => item.id === payment.appointmentId); return <button className="client-row interactive-row" key={payment.id} onClick={() => open('payment', payment)}><PaymentsIcon /><div className="flex-1"><strong>{clientName(payment.clientId)}</strong><span className="text-xs text-slate-400">{payment.date} · {payment.method} · {payment.concept}{related ? ` · Cita ${related.date}` : ' · Pago general'}</span></div><strong className="mono-value amber-text">{money(payment.amount)}</strong></button> })}</Surface>}
     <p className="text-xs text-slate-500 mt-6">Selecciona una cita, cliente o pago para ver y editar sus datos.</p>
   </main>
+  <Dialog open={Boolean(viewingAppointment)} onClose={close} fullWidth maxWidth="md" className="appointment-detail-dialog">
+    <header className="appointment-detail-header">
+      <Avatar className="appointment-client-avatar">{clientInitials}</Avatar>
+      <div className="appointment-detail-identity">
+        <div className="appointment-detail-reference"><strong>{appointmentCode}</strong><span>AGENDA</span>{form.status && <StatusChip label={form.status} />}</div>
+        <h2>{detailClient?.name || clientName(form.clientId)}</h2>
+        <p>{detailClient?.ci ? `CI: ${detailClient.ci}` : detailClient?.phone || 'Cliente registrado'}</p>
+      </div>
+      {(isAdmin || form.artist === scope?.artist) && <Button className="appointment-edit-button" variant="contained" startIcon={<Edit />} onClick={() => { setError(''); setViewingAppointment(null); setDialog('appointment') }}>Editar cita</Button>}
+      <IconButton className="appointment-close-button" aria-label="Cerrar detalle" onClick={close}><Close /></IconButton>
+    </header>
+    <nav className="appointment-detail-tabs" aria-label="Secciones del detalle">
+      <button className={appointmentDetailTab === 'schedule' ? 'active' : ''} onClick={() => setAppointmentDetailTab('schedule')}><span>1</span><div><strong>Estado & horario</strong><small>Datos de la sesión</small></div></button>
+      <button className={appointmentDetailTab === 'notes' ? 'active' : ''} onClick={() => setAppointmentDetailTab('notes')}><span>2</span><div><strong>Notas</strong><small>{form.notes?.trim() ? '1 nota registrada' : 'Sin notas'}</small></div></button>
+      <button className={appointmentDetailTab === 'payments' ? 'active' : ''} onClick={() => setAppointmentDetailTab('payments')}><span>3</span><div><strong>Anticipos / seña</strong><small>{detailPayments.length} movimientos</small></div></button>
+    </nav>
+    <DialogContent className="appointment-detail-content">
+      {error && <Alert severity="error">{error}</Alert>}
+      {appointmentDetailTab === 'schedule' && <div className="appointment-schedule-panel">
+        <section className="appointment-status-card">
+          <div><span className="appointment-status-dot" /><div><small>ESTADO ACTUAL</small><strong>{form.status}</strong></div></div>
+          <span className={isTodayAppointment ? 'today' : form.date > today ? 'upcoming' : 'past'}>{appointmentTiming}</span>
+        </section>
+        <section className="appointment-date-time-grid">
+          <div><CalendarMonth /><section><small>FECHA DE LA CITA</small><strong>{form.date ? prettyDate(form.date) : 'Sin fecha'}</strong></section></div>
+          <div><AccessTime /><section><small>HORA EXACTA</small><strong>{form.time || '--:--'}</strong></section></div>
+        </section>
+        <section className="appointment-information-card">
+          <div><Person /><section><small>ARTISTA ASIGNADO</small><strong>{form.artist || 'Sin asignar'}</strong></section></div>
+          <div><PaletteOutlined /><section><small>ESTILO / SERVICIO</small><strong>{form.type || 'Sin definir'}</strong></section></div>
+        </section>
+        <section className="appointment-client-contact">
+          <div><small>CONTACTO DEL CLIENTE</small><strong>{detailClient?.phone || 'Sin teléfono registrado'}</strong></div>
+          <div><small>CORREO ELECTRÓNICO</small><strong>{detailClient?.email || 'Sin correo registrado'}</strong></div>
+        </section>
+      </div>}
+      {appointmentDetailTab === 'notes' && <div className="appointment-notes-panel">
+        <div className="appointment-panel-heading"><StickyNote2Outlined /><div><small>SEGUIMIENTO</small><h3>Notas de la cita</h3></div></div>
+        {isAdmin || form.artist === scope?.artist ? <><TextField fullWidth placeholder="Añade indicaciones, preferencias o detalles importantes…" value={form.notes || ''} onChange={event => setForm(previous => ({ ...previous, notes: event.target.value }))} multiline minRows={7} /><Button className="appointment-save-note" variant="contained" disabled={saving || (form.notes || '').trim() === (data.appointments.find(item => item.id === form.id)?.notes || '')} onClick={saveAppointmentNote}>{saving ? 'Guardando…' : 'Guardar nota'}</Button></> : <p className="appointment-readonly-note">{form.notes || 'Sin notas registradas.'}</p>}
+      </div>}
+      {appointmentDetailTab === 'payments' && <div className="appointment-payments-panel">
+        <section className="appointment-finance-summary">
+          <div><small>PRECIO TOTAL</small><strong>{money(form.total_price || 0)}</strong></div>
+          <div><small>ANTICIPOS PAGADOS</small><strong className="paid">{money(appointmentPaid(form.id))}</strong></div>
+          <div><small>SALDO PENDIENTE</small><strong className={appointmentBalance(form) > 0 ? 'pending' : 'paid'}>{money(appointmentBalance(form))}</strong></div>
+        </section>
+        <div className="appointment-payment-history">
+          <div className="appointment-panel-heading"><PaymentsIcon /><div><small>HISTORIAL</small><h3>Movimientos vinculados</h3></div></div>
+          {!detailPayments.length && <p className="appointment-empty-state">Todavía no hay anticipos o pagos vinculados a esta cita.</p>}
+          {detailPayments.map(payment => <div className="appointment-payment-row" key={payment.id}><div><strong>{payment.concept}</strong><span>{prettyDate(payment.date)} · {payment.method}</span></div><strong>{money(payment.amount)}</strong></div>)}
+        </div>
+      </div>}
+    </DialogContent>
+    <DialogActions className="appointment-detail-actions">
+      {isAdmin && <Button variant="outlined" startIcon={<PaymentsIcon />} onClick={() => { setViewingAppointment(null); open('payment', { clientId: form.clientId, appointmentId: form.id, amount: '', method: 'QR', date: today, concept: 'Anticipo' }) }}>Abonar seña</Button>}
+      {(isAdmin || form.artist === scope?.artist) && <Button variant="outlined" startIcon={<CalendarMonth />} onClick={() => { setError(''); setViewingAppointment(null); setDialog('appointment') }}>Reprogramar</Button>}
+      {whatsappPhone && <Button className="appointment-whatsapp-button" component="a" href={`https://wa.me/${whatsappPhone}?text=${encodeURIComponent(`Hola ${detailClient?.name || ''}, te escribimos por tu cita del ${form.date} a las ${form.time}.`)}`} target="_blank" rel="noreferrer" startIcon={<WhatsApp />}>WhatsApp al cliente</Button>}
+    </DialogActions>
+  </Dialog>
   <Dialog open={Boolean(dialog)} onClose={close} fullWidth maxWidth="sm"><DialogTitle>{dialog === 'notifications' ? 'Notificaciones del estudio' : dialog === 'appointment-details' ? 'Detalle de la cita' : dialog === 'settings' ? 'Configuración del estudio' : `${form.id ? 'Editar' : 'Registrar'} ${dialog === 'client' ? 'cliente' : dialog === 'payment' ? 'pago' : 'cita'}`}</DialogTitle>{dialog === 'notifications' ? <><DialogContent><AppointmentNotifications appointments={data.appointments} clients={data.clients} scope={scope} saving={saving} error={error} onRefresh={cloud ? refresh : undefined} onConfirm={async item => { const next = { ...data, appointments: data.appointments.map(row => row.id === item.id ? { ...row, status: 'Confirmada' } : row) }; if (await saveData(next)) setNotice('Cita confirmada'); }} /></DialogContent><DialogActions><Button onClick={close}>Cerrar</Button></DialogActions></> : dialog === 'appointment-details' ? <><DialogContent><div className="form-fields">{error && <Alert severity="error">{error}</Alert>}<div className="surface"><div className="flex flex-wrap items-center justify-between gap-3"><div><span className="eyebrow-text">CLIENTE</span><h2>{clientName(form.clientId)}</h2></div><StatusChip label={form.status} /></div><p className="mt-4"><strong>Fecha:</strong> {prettyDate(form.date)}</p><p><strong>Hora:</strong> {form.time}</p><p><strong>Tatuador:</strong> {form.artist}</p><p><strong>Estilo:</strong> {form.type}</p></div><Alert severity={appointmentBalance(form) > 0 ? 'warning' : 'success'}>Precio: {money(form.total_price || 0)} · Pagado: {money(appointmentPaid(form.id))} · Saldo: {money(appointmentBalance(form))}</Alert>{isAdmin || form.artist === scope?.artist ? <TextField fullWidth label="Notas de la cita" value={form.notes || ''} onChange={event => setForm(previous => ({ ...previous, notes: event.target.value }))} multiline minRows={3} helperText="Puedes añadir o actualizar la nota sin editar los demás datos." /> : <div className="surface"><span className="eyebrow-text">NOTAS</span><p className="mt-2">{form.notes || 'Sin notas registradas.'}</p></div>}</div></DialogContent><DialogActions sx={{ flexWrap: 'wrap', gap: 1 }}><Button onClick={close}>Cerrar</Button>{isAdmin && <Button onClick={() => open('payment', { clientId: form.clientId, appointmentId: form.id, amount: '', method: 'QR', date: today, concept: 'Anticipo' })}>Registrar anticipo o pago</Button>}{(isAdmin || form.artist === scope?.artist) && <Button disabled={saving || (form.notes || '').trim() === (data.appointments.find(item => item.id === form.id)?.notes || '')} onClick={saveAppointmentNote}>Guardar nota</Button>}{(isAdmin || form.artist === scope?.artist) && <Button variant="contained" onClick={() => { setError(''); setDialog('appointment') }}>Editar cita</Button>}</DialogActions></> : <form onSubmit={submit}><fieldset disabled={saving} style={{ border: 0, margin: 0, padding: 0 }}><DialogContent><div className="form-fields">{error && <Alert severity="error">{error}</Alert>}
     {dialog === 'client' && <fieldset disabled={!isAdmin} className="form-fields" style={{ border: 0, padding: 0 }}><Field label="Nombre completo" name="name" value={form.name} onChange={change} required inputProps={{ maxLength: 120 }} /><Field label="Teléfono" name="phone" type="tel" value={form.phone} onChange={change} /><Field label="Correo electrónico" name="email" type="email" value={form.email} onChange={change} /><Field label="CI" name="ci" value={form.ci} onChange={change} /><Field label="Categoría" name="tag" value={form.tag} onChange={change} options={['Nueva', 'Activo', 'VIP']} /><Field label="Artista preferido" name="artist" value={form.artist} onChange={change} options={activeArtists.includes(form.artist) ? activeArtists : [form.artist, ...activeArtists].filter(Boolean)} /></fieldset>}
     {dialog === 'appointment' && <>{!activeArtists.length && !form.id && <Alert severity="warning">Primero agrega o activa un tatuador desde «Equipo y permisos».</Alert>}{!form.id && isAdmin && <div className="flex flex-wrap gap-2"><Button variant={!useNewClient ? 'contained' : 'outlined'} onClick={() => setUseNewClient(false)} disabled={!data.clients.length}>Cliente registrado</Button><Button variant={useNewClient ? 'contained' : 'outlined'} onClick={() => setUseNewClient(true)}>Cliente nuevo</Button></div>}{useNewClient && !form.id ? <><Alert severity="info">El cliente y la cita se guardarán juntos en Supabase. Si ocurre un error, no se registrará ninguno de los dos.</Alert><Field label="Nombre completo del cliente" name="name" value={newClient.name} onChange={changeNewClient} required inputProps={{ maxLength: 120 }} /><Field label="Teléfono" name="phone" type="tel" value={newClient.phone} onChange={changeNewClient} /><Field label="Correo electrónico" name="email" type="email" value={newClient.email} onChange={changeNewClient} /><Field label="CI" name="ci" value={newClient.ci} onChange={changeNewClient} /><Field label="Categoría" name="tag" value={newClient.tag} onChange={changeNewClient} options={['Nueva', 'Activo', 'VIP']} /><Field label="Artista preferido" name="artist" value={newClient.artist} onChange={changeNewClient} options={activeArtists} /></> : <><Alert severity="info">Selecciona un cliente que ya esté registrado. Si no aparece, usa la opción «Cliente nuevo».</Alert><Field disabled={!isAdmin} label="Cliente registrado" name="clientId" value={form.clientId} onChange={change} options={data.clients.map(client => ({ value: client.id, label: client.name }))} required /></>}<Field disabled={!isAdmin} label="Fecha" name="date" type="date" value={form.date} onChange={change} required /></>}
