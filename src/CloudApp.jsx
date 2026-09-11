@@ -30,7 +30,7 @@ function AccessForm({ recovery = false, onRecovered }) {
   return <main className="access-page"><section className="surface access-card"><div className="brand-mark">IS</div><h1 className="page-title mt-5">InkStudio</h1><p className="mt-3 mb-6 text-slate-400">{recovery ? 'Elige una nueva contraseña.' : mode === 'reset' ? 'Recupera el acceso a tu cuenta.' : 'Inicia sesión con una cuenta proporcionada por el administrador.'}</p><form className="form-fields" onSubmit={submit}>{error && <Alert severity="error">{error}</Alert>}{message && <Alert severity="success">{message}</Alert>}{!recovery && <TextField label="Correo electrónico" type="email" autoComplete="email" required value={email} onChange={event => setEmail(event.target.value)} />}{(recovery || mode !== 'reset') && <TextField label={recovery ? 'Nueva contraseña' : 'Contraseña'} type="password" autoComplete={recovery ? 'new-password' : 'current-password'} required value={password} onChange={event => setPassword(event.target.value)} slotProps={{ htmlInput: { minLength: recovery ? 8 : 1 } }} helperText={recovery ? 'Usa al menos 8 caracteres.' : ''} />}<Button type="submit" variant="contained" disabled={busy}>{busy ? 'Procesando…' : recovery ? 'Guardar contraseña' : mode === 'reset' ? 'Enviar enlace' : 'Iniciar sesión'}</Button>{!recovery && <Button disabled={busy} onClick={() => { setMode(mode === 'reset' ? 'login' : 'reset'); setMessage(''); setError('') }}>{mode === 'reset' ? 'Volver al inicio de sesión' : 'Olvidé mi contraseña'}</Button>}</form></section></main>
 }
 
-function WorkspaceData({ session, scope, studios, onSelect, onReload }) {
+function WorkspaceData({ session, scope, studios, onSelect }) {
   const [initial, setInitial] = useState(null)
   const [error, setError] = useState('')
   const [attempt, setAttempt] = useState(0)
@@ -45,7 +45,7 @@ function WorkspaceData({ session, scope, studios, onSelect, onReload }) {
     if (error) throw error
   }
   if (!initial) return <main className="access-page"><section className="surface access-card">{error ? <><Alert severity="error">{error}</Alert><Button onClick={() => { setError(''); setAttempt(value => value + 1) }}>Reintentar</Button><Button onClick={() => signOut().catch(() => setError('No se pudo cerrar la sesión. Vuelve a intentarlo.'))}>Cerrar sesión</Button></> : <><CircularProgress /><p className="mt-4">Cargando datos del estudio…</p></>}</section></main>
-  return <App initial={initial} cloud scope={scope} toolbar={<StudioAccess session={session} scope={scope} studios={studios} onSelect={onSelect} onReload={onReload} onArtistsChanged={reloadWorkspace} />} onPersist={(previous, next) => persistStudioChange(previous, next, scope.owner_id)} onCreateClientAppointment={(client, appointment) => createClientAppointment(client, appointment, scope.owner_id)} onRefresh={() => fetchStudio(scope.owner_id)} onSignOut={signOut} />
+  return <App initial={initial} cloud scope={scope} toolbar={<StudioAccess session={session} scope={scope} studios={studios} onSelect={onSelect} onArtistsChanged={reloadWorkspace} />} onPersist={(previous, next) => persistStudioChange(previous, next, scope.owner_id)} onCreateClientAppointment={(client, appointment) => createClientAppointment(client, appointment, scope.owner_id)} onRefresh={() => fetchStudio(scope.owner_id)} onSignOut={signOut} />
 }
 
 function Workspace({ session }) {
@@ -53,12 +53,6 @@ function Workspace({ session }) {
   const [selected, setSelected] = useState(null)
   const [error, setError] = useState('')
   const select = id => { setSelected(id); try { localStorage.setItem(`inkstudio-scope-${session.user.id}`, id) } catch { /* Selection still works in memory. */ } }
-  const reload = async preferred => {
-    const result = await supabase.rpc('list_studios')
-    if (result.error) throw Error('No se pudieron cargar los estudios.')
-    setStudios(result.data)
-    if (preferred) select(preferred)
-  }
   useEffect(() => {
     let current = true
     supabase.rpc('list_studios').then(result => {
@@ -74,7 +68,7 @@ function Workspace({ session }) {
   const scope = studios.find(studio => studio.owner_id === selected)
   if (error) return <main className="access-page"><Alert severity="error">{error}</Alert></main>
   if (!scope) return <main className="access-page"><CircularProgress /></main>
-  return <WorkspaceData key={scope.owner_id} session={session} scope={scope} studios={studios} onSelect={select} onReload={reload} />
+  return <WorkspaceData key={scope.owner_id} session={session} scope={scope} studios={studios} onSelect={select} />
 }
 
 export default function CloudApp() {

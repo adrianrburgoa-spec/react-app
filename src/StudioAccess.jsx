@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, TextField } from '@mui/material'
 import { supabase } from './supabase.js'
 
-export default function StudioAccess({ session, scope, studios, onSelect, onReload, onArtistsChanged }) {
+export default function StudioAccess({ session, scope, studios, onSelect, onArtistsChanged }) {
   const [tab, setTab] = useState(null)
   const [members, setMembers] = useState([])
   const [invites, setInvites] = useState([])
@@ -12,7 +12,6 @@ export default function StudioAccess({ session, scope, studios, onSelect, onRelo
   const [role, setRole] = useState('artist')
   const [artist, setArtist] = useState('')
   const [username, setUsername] = useState('')
-  const [joinCode, setJoinCode] = useState('')
   const [credentials, setCredentials] = useState(null)
   const [password, setPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -76,11 +75,10 @@ export default function StudioAccess({ session, scope, studios, onSelect, onRelo
     <TextField select label="Estudio activo" value={scope.owner_id} onChange={event => onSelect(event.target.value)} sx={{ minWidth: 210 }}>{studios.map(studio => <MenuItem key={studio.owner_id} value={studio.owner_id}>{studio.studio}</MenuItem>)}</TextField>
     <span className="text-sm text-slate-400">{scope.role === 'admin' ? 'Administrador' : `Tatuador · ${scope.artist}`}</span>
     {scope.role === 'admin' && <Button onClick={() => open('team')}>Equipo y permisos</Button>}
-    <Button onClick={() => open('join')}>Unirme a un estudio</Button><Button onClick={() => open('account')}>Mi cuenta</Button>
-  </div><Dialog open={Boolean(tab)} onClose={close} fullWidth maxWidth="sm"><DialogTitle>{tab === 'team' ? 'Equipo y permisos' : tab === 'join' ? 'Unirme a un estudio' : 'Acceso y recuperación'}</DialogTitle><DialogContent><div className="form-fields">
+    <Button onClick={() => open('account')}>Mi cuenta</Button>
+  </div><Dialog open={Boolean(tab)} onClose={close} fullWidth maxWidth="sm"><DialogTitle>{tab === 'team' ? 'Equipo y permisos' : 'Acceso y recuperación'}</DialogTitle><DialogContent><div className="form-fields">
     {error && <Alert severity="error">{error}</Alert>}{message && <Alert severity="success">{message}</Alert>}
     {tab === 'account' && <><p className="text-sm">Acceso actual: {session.user.email}</p>{/\.(example|invalid|test)$/i.test(session.user.email) && <Alert severity="info">Puedes seguir usando tu cuenta actual. La recuperación por correo estará disponible cuando agregues y confirmes un correo real.</Alert>}<form className="form-fields" onSubmit={changeAccount}><TextField label="Contraseña actual" type="password" autoComplete="current-password" required value={password} onChange={event => setPassword(event.target.value)} /><TextField label="Nueva contraseña" type="password" autoComplete="new-password" value={newPassword} onChange={event => setNewPassword(event.target.value)} slotProps={{ htmlInput: { minLength: 8 } }} /><TextField label="Repetir nueva contraseña" type="password" autoComplete="new-password" required={Boolean(newPassword)} value={confirmation} onChange={event => setConfirmation(event.target.value)} /><Button type="submit" variant="contained" disabled={busy}>Actualizar acceso</Button></form></>}
-    {tab === 'join' && <><p className="text-sm">Pide al administrador el código de invitación. Tu estudio actual y sus datos se conservarán.</p><TextField label="Código de invitación" value={joinCode} onChange={event => setJoinCode(event.target.value)} /><Button disabled={busy || !joinCode.trim()} variant="contained" onClick={() => run(async () => { const result = await supabase.rpc('accept_studio_invite', { invite_code: joinCode.trim() }); if (result.error) throw Error('Código inválido, vencido, utilizado o ya perteneces al estudio.'); await onReload(result.data); setTab(null); setJoinCode('') })}>Aceptar invitación</Button></>}
     {tab === 'team' && <><Alert severity="info">Los administradores gestionan clientes, agenda, caja y equipo. Los tatuadores consultan clientes y agenda, y solo cambian el estado y notas de sus propias citas. No tienen acceso a caja.</Alert>
       <h3>Catálogo de tatuadores</h3>
       <p className="text-sm text-slate-400">Los tatuadores activos aparecen al registrar clientes, citas y cuentas. Desactivar conserva todo su historial.</p>
